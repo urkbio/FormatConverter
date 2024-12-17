@@ -1,0 +1,9 @@
+FormatConverter/
+├── ffmpeg/
+│   └── ffmpeg.exe
+├── icons/
+│   ├── converter.png    # 程序运行时使用的图标
+│   └── converter.ico    # 打包后的可执行文件图标
+├── file_converter.py
+├── build.py
+└── requirements.txt 
