@@ -5,7 +5,7 @@ a = Analysis(
     ['file_converter.py'],
     pathex=[],
     binaries=[],
-    datas=[('C:\\Cursor\\FormatConverter\\ffmpeg', 'ffmpeg'), ('C:\\Cursor\\FormatConverter\\icons', 'icons')],
+    datas=[('D:\\Cursor\\FormatConverter\\ffmpeg', 'ffmpeg'), ('D:\\Cursor\\FormatConverter\\icons', 'icons')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -32,9 +32,9 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    version='C:\\Cursor\\FormatConverter\\version.txt',
-    icon=['C:\\Cursor\\FormatConverter\\icons\\converter.ico'],
-    manifest='C:\\Cursor\\FormatConverter\\app.manifest',
+    version='D:\\Cursor\\FormatConverter\\version.txt',
+    icon=['D:\\Cursor\\FormatConverter\\icons\\converter.ico'],
+    manifest='D:\\Cursor\\FormatConverter\\app.manifest',
 )
 coll = COLLECT(
     exe,
