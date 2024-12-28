@@ -97,14 +97,14 @@ class ConvertThread(QThread):
                 if 'libx264' not in encoders:
                     raise Exception("当前 FFmpeg 不支持 H.264 编码")
                 format_cmd = [
-                    '-c:a', 'aac',
+                    '-c:a', 'mp3',  # 使用 mp3 替代 aac
                     '-c:v', 'libx264',
                     '-preset', 'medium',
                     '-crf', '23'
                 ]
             elif self.target_format == 'flv':
                 format_cmd = [
-                    '-c:a', 'aac',
+                    '-c:a', 'mp3',  # 使用 mp3 替代 aac
                     '-c:v', 'flv',
                     '-f', 'flv'
                 ]
@@ -123,7 +123,7 @@ class ConvertThread(QThread):
                 ]
             elif self.target_format == 'mov':
                 format_cmd = [
-                    '-c:a', 'aac',
+                    '-c:a', 'mp3',  # 使用 mp3 替代 aac
                     '-c:v', 'h264',
                     '-f', 'mov'
                 ]
@@ -202,16 +202,7 @@ class ConvertThread(QThread):
             ]
             
             # 根据目标格式添加特定参数
-            if self.target_format == 'm4a':
-                if 'aac' not in encoders:
-                    raise Exception("当前 FFmpeg 不支持 AAC 编码，无法转换为 M4A 格式")
-                format_cmd = [
-                    '-c:a', 'aac',
-                    '-b:a', '192k',
-                    '-f', 'mp4',  # 使用 mp4 容器
-                    '-movflags', '+faststart'
-                ]
-            elif self.target_format == 'mp3':
+            if self.target_format == 'mp3':
                 if 'libmp3lame' not in encoders:
                     raise Exception("当前 FFmpeg 不支持 MP3 编码")
                 format_cmd = [
@@ -333,12 +324,21 @@ class FileConverterWindow(QMainWindow):
                 border: 1px solid #BDBDBD;
                 border-radius: 4px;
             }
+            QMessageBox {
+                font-size: 14px;
+                color: #333;
+            }
+            QMessageBox QLabel {
+                font-size: 14px;
+                color: #333;
+                min-width: 200px;
+            }
         """)
         
         # 支持的格式
         self.image_formats = {'.jpg', '.jpeg', '.png', '.bmp', '.webp', '.gif'}
         self.video_formats = {'.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv'}
-        self.audio_formats = {'.mp3', '.wav', '.aac', '.ogg'}  # 移除 m4a
+        self.audio_formats = {'.mp3', '.wav', '.ogg'}  # 移除 aac
         
         # 允许拖放
         self.setAcceptDrops(True)
@@ -355,34 +355,52 @@ class FileConverterWindow(QMainWindow):
     def setup_ffmpeg(self):
         """设置 ffmpeg 路径"""
         try:
-            # 获取程序所在目录
-            if getattr(sys, 'frozen', False):
-                base_path = Path(sys._MEIPASS)
-            else:
-                base_path = Path(__file__).parent
-            
-            # 根据操作系统选择正确的 ffmpeg 可执行文件
-            if sys.platform == 'win32':
-                ffmpeg_path = base_path / 'ffmpeg' / 'ffmpeg.exe'
-            else:
-                ffmpeg_path = base_path / 'ffmpeg' / 'ffmpeg'
-            
-            print(f"FFMPEG路径: {ffmpeg_path}")
-            print(f"路径是否存在: {ffmpeg_path.exists()}")
-                
-            if not ffmpeg_path.exists():
-                alt_path = Path('ffmpeg') / ('ffmpeg.exe' if sys.platform == 'win32' else 'ffmpeg')
-                if alt_path.exists():
-                    ffmpeg_path = alt_path
+            # 首先尝试使用系统的 ffmpeg
+            try:
+                # 在 macOS 上，ffmpeg 通常安装在 /opt/homebrew/bin/ffmpeg
+                if sys.platform == 'darwin':
+                    if Path('/opt/homebrew/bin/ffmpeg').exists():
+                        ffmpeg_path = '/opt/homebrew/bin/ffmpeg'
+                    else:
+                        # 尝试使用 which 命令查找 ffmpeg
+                        result = subprocess.run(['which', 'ffmpeg'], capture_output=True, text=True)
+                        if result.returncode == 0:
+                            ffmpeg_path = result.stdout.strip()
+                        else:
+                            raise FileNotFoundError("系统中未找到 ffmpeg")
                 else:
-                    raise FileNotFoundError(f"找不到 ffmpeg，已尝试路径：\n1. {ffmpeg_path}\n2. {alt_path}")
+                    # 在其他系统上使用原有的逻辑
+                    if getattr(sys, 'frozen', False):
+                        base_path = Path(sys._MEIPASS)
+                    else:
+                        base_path = Path(__file__).parent
+                    
+                    if sys.platform == 'win32':
+                        ffmpeg_path = str(base_path / 'ffmpeg' / 'ffmpeg.exe')
+                    else:
+                        ffmpeg_path = str(base_path / 'ffmpeg' / 'ffmpeg')
+                    
+                    if not Path(ffmpeg_path).exists():
+                        alt_path = Path('ffmpeg') / ('ffmpeg.exe' if sys.platform == 'win32' else 'ffmpeg')
+                        if alt_path.exists():
+                            ffmpeg_path = str(alt_path)
+                        else:
+                            raise FileNotFoundError(f"找不到 ffmpeg，已尝试路径：\n1. {ffmpeg_path}\n2. {alt_path}")
             
-            # 设置 ffmpeg 环境变量
-            os.environ["FFMPEG_BINARY"] = str(ffmpeg_path)
-            print(f"设置的FFMPEG环境变量: {os.environ['FFMPEG_BINARY']}")
-            
-            return str(ffmpeg_path)
-            
+                print(f"FFMPEG路径: {ffmpeg_path}")
+                
+                # 设置 ffmpeg 环境变量
+                os.environ["FFMPEG_BINARY"] = ffmpeg_path
+                print(f"设置的FFMPEG环境变量: {os.environ['FFMPEG_BINARY']}")
+                
+                return ffmpeg_path
+                
+            except Exception as e:
+                error_msg = f'设置 ffmpeg 失败：{str(e)}\n当前目录：{os.getcwd()}'
+                print(error_msg)
+                QMessageBox.critical(self, '错误', error_msg)
+                sys.exit(1)
+                
         except Exception as e:
             error_msg = f'设置 ffmpeg 失败：{str(e)}\n当前目录：{os.getcwd()}'
             print(error_msg)
@@ -646,9 +664,38 @@ class FileConverterWindow(QMainWindow):
         self.convert_thread.start()
 
     def conversion_finished(self):
+        self.convert_progress.setValue(100)
+        if sys.platform == 'darwin':  # macOS
+            # 使用原生的 macOS 风格
+            button = QPushButton('确定')
+            msg_box = QMessageBox(self)
+            msg_box.setWindowTitle("转换完成")
+            msg_box.setText("文件转换已完成！")
+            msg_box.addButton(button, QMessageBox.AcceptRole)
+            msg_box.setTextFormat(Qt.RichText)  # 使用富文本格式
+            msg_box.setStyleSheet("""
+                QMessageBox {
+                    color: #000;
+                    font-family: ".AppleSystemUIFont";
+                    font-size: 13px;
+                }
+                QPushButton {
+                    min-width: 80px;
+                    min-height: 24px;
+                    font-family: ".AppleSystemUIFont";
+                }
+            """)
+        else:
+            # 其他系统使用标准样式
+            msg_box = QMessageBox(self)
+            msg_box.setWindowTitle("转换完成")
+            msg_box.setText("文件转换已完成！")
+            msg_box.setStandardButtons(QMessageBox.Ok)
+            msg_box.setDefaultButton(QMessageBox.Ok)
+        
+        msg_box.exec_()
         self.convert_button.setEnabled(True)
-        self.status_label.setText('转换完成！')
-        QMessageBox.information(self, '完成', '文件转换已完成！')
+        self.status_label.setText("")
 
     def conversion_error(self, error_msg):
         self.convert_button.setEnabled(True)
@@ -718,32 +765,12 @@ class FileConverterWindow(QMainWindow):
 
     def open_output_dir(self):
         """打开输出目录"""
-        try:
-            # 使用 dir_edit 中的路径而不是 self.output_dir
-            output_dir = self.dir_edit.text()
-            
-            # 检查目录是否存在
-            if not os.path.exists(output_dir):
-                raise FileNotFoundError(f"目录不存在：{output_dir}")
-                
-            if sys.platform == 'win32':
-                # 直接使用 explorer 打开目录
-                subprocess.run(['explorer', str(Path(output_dir))])
-            elif sys.platform == 'darwin':  # macOS
-                subprocess.run(['open', '-n', output_dir])
-            else:  # Linux
-                try:
-                    # 尝试使用 nautilus (GNOME)
-                    subprocess.run(['nautilus', '--new-window', '--geometry=800x600', output_dir])
-                except FileNotFoundError:
-                    try:
-                        # 尝试使用 dolphin (KDE)
-                        subprocess.run(['dolphin', '--new-window', '--geometry=800x600', output_dir])
-                    except FileNotFoundError:
-                        # 如果都不可用，使用默认的 xdg-open
-                        subprocess.run(['xdg-open', output_dir])
-        except Exception as e:
-            QMessageBox.warning(self, '警告', f'无法打开目录：{str(e)}')
+        if sys.platform == 'darwin':  # macOS
+            subprocess.run(['open', self.output_dir])
+        elif sys.platform == 'win32':  # Windows
+            os.startfile(self.output_dir)
+        else:  # Linux 或其他系统
+            subprocess.run(['xdg-open', self.output_dir])
 
     def get_icon_path(self):
         """获取图标路径"""

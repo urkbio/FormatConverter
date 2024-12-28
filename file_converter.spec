@@ -5,8 +5,8 @@ a = Analysis(
     ['file_converter.py'],
     pathex=[],
     binaries=[],
-    datas=[('D:\\Cursor\\FormatConverter\\icons', 'icons'), ('D:\\Cursor\\FormatConverter\\ffmpeg', 'ffmpeg')],
-    hiddenimports=[],
+    datas=[('/Users/joomaen/Documents/Code/FormatConverter/icons', 'icons')],
+    hiddenimports=['PIL', 'PIL._imagingtk', 'PIL._tkinter_finder', 'PyQt5', 'PyQt5.QtCore', 'PyQt5.QtGui', 'PyQt5.QtWidgets'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -32,8 +32,6 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['D:\\Cursor\\FormatConverter\\icons\\converter.ico'],
-    manifest='app.manifest',
 )
 coll = COLLECT(
     exe,
@@ -43,4 +41,10 @@ coll = COLLECT(
     upx=True,
     upx_exclude=[],
     name='file_converter',
+)
+app = BUNDLE(
+    coll,
+    name='file_converter.app',
+    icon=None,
+    bundle_identifier=None,
 )
